@@ -88,26 +88,20 @@ class RoadDefectDetector:
         
         return detection_data
     
-    def process_video(self, video_path: str, metadata: Dict = None, frame_interval: int = 30) -> List[Dict]:
+    def process_video(self, video_path: str, metadata: Dict = None) -> List[Dict]:
 
-        results = self.model(video_path)
-        video_data = []
-        
-        cap = cv2.VideoCapture(video_path)
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        frame_count = 0
+        results = self.model.predict(source=video_path,stream=True,verbose=False)
+        video_data = {
+            "timestamp": datetime.now().isoformat(),
+            "source": video_path,
+            "type": "video",
+            "frames_results" : []
+        }
+        frame_idx = 1
         
         for result in results:
-            if frame_count % frame_interval == 0:  # Process every Nth frame
-                frame_time = frame_count / fps if fps > 0 else frame_count
-                
+            
                 frame_data = {
-                    "timestamp": datetime.now().isoformat(),
-                    "source": video_path,
-                    "type": "video",
-                    "frame_number": frame_count,
-                    "frame_time_seconds": round(frame_time, 2),
-                    "metadata": metadata or {},
                     "detections": [],
                     "summary": {
                         "total_defects": 0,
@@ -139,25 +133,18 @@ class RoadDefectDetector:
                                 "area": round((bbox[2] - bbox[0]) * (bbox[3] - bbox[1]), 2)
                             },
                             "severity": severity,
-                            "location": {
-                                "center_x": round((bbox[0] + bbox[2]) / 2, 2),
-                                "center_y": round((bbox[1] + bbox[3]) / 2, 2)
-                            }
                         }
                         
                         frame_data["detections"].append(detection)
                         
                         # Update summary
                         frame_data["summary"]["total_defects"] += 1
-                        frame_data["summary"]["defect_counts"][defect_type] = \
-                            frame_data["summary"]["defect_counts"].get(defect_type, 0) + 1
+                        frame_data["summary"]["defect_counts"][defect_type] = frame_data["summary"]["defect_counts"].get(defect_type, 0) + 1
                         frame_data["summary"]["severity_distribution"][severity] += 1
                 
-                video_data.append(frame_data)
-            
-            frame_count += 1
+                video_data["frames_results"].append(frame_data)
+                frame_idx+=1
         
-        cap.release()
         return video_data
     
     def process_realtime_stream(self, source=0, metadata: Dict = None):
@@ -230,14 +217,14 @@ def main():
     detector = RoadDefectDetector('yolo-pd.pt')
     
     # Example 1: Process single image
-    print("=== Processing Image ===")
+    print("=== Processing ===")
     image_metadata = {
         "location": {"lat": 28.6139, "lon": 77.2090, "city": "New Delhi"},
         "weather": "sunny",
         "road_type": "highway"
     }
     
-    image_result = detector.process_image("pothole.webp", image_metadata)
+    image_result = detector.process_video("potholes.mp4", image_metadata)
     print(json.dumps(image_result, indent=2))
 
 if __name__ == "__main__":
