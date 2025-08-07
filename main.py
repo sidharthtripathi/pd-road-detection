@@ -34,7 +34,7 @@ class RoadDefectDetector:
             return "critical"
     
     def process_image(self, image_path: str, metadata: Dict = None) -> Dict:
-        results = self.model(image_path)
+        results = self.model(image_path,verbose=False)
         
         detection_data = {
             "source": image_path,
@@ -209,23 +209,3 @@ class RoadDefectDetector:
                 
         finally:
             cap.release()
-
-# USAGE EXAMPLES:
-
-def main():
-    # Initialize detector
-    detector = RoadDefectDetector('yolo-pd.pt')
-    
-    # Example 1: Process single image
-    print("=== Processing ===")
-    image_metadata = {
-        "location": {"lat": 28.6139, "lon": 77.2090, "city": "New Delhi"},
-        "weather": "sunny",
-        "road_type": "highway"
-    }
-    
-    image_result = detector.process_video("potholes.mp4", image_metadata)
-    print(json.dumps(image_result, indent=2))
-
-if __name__ == "__main__":
-    main()
